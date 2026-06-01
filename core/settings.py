@@ -6,7 +6,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-gestion-projets-erp-2026-change-in-production')
 DEBUG = config('DEBUG', default=True, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = config(
+    'ALLOWED_HOSTS',
+    default='localhost,127.0.0.1,api-erp-projet.numerix.digital,erp-projet.numerix.digital',
+).split(',')
+
+SITE_URL = config('SITE_URL', default='http://localhost:5174')
+API_URL  = config('API_URL',  default='http://localhost:8000')
 
 DJANGO_APPS = [
     'django.contrib.admin',
@@ -92,7 +98,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'erp-projet',
         'USER': 'root',
-        'PASSWORD': '',
+        'PASSWORD': 'xamil@IFE2025',
         'HOST': '127.0.0.1',
         'PORT': '3306',
         'OPTIONS': {
@@ -150,16 +156,28 @@ SIMPLE_JWT = {
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'ERP Gestion Projets API',
-    'DESCRIPTION': "API complète pour l'ERP de gestion de projets - 45 modules, 9 lots",
+    'DESCRIPTION': "API complète pour l'ERP de gestion de projets — 45 modules, 9 lots",
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'SERVERS': [
+        {'url': 'http://api-erp-projet.numerix.digital', 'description': 'Serveur de production'},
+        {'url': 'http://localhost:8000',                 'description': 'Serveur de développement'},
+    ],
 }
 
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
-    CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:5173,http://localhost:3000').split(',')
+    CORS_ALLOWED_ORIGINS = config(
+        'CORS_ALLOWED_ORIGINS',
+        default='http://erp-projet.numerix.digital',
+    ).split(',')
 CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='http://erp-projet.numerix.digital,http://api-erp-projet.numerix.digital',
+).split(',')
 
 CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
