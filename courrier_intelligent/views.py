@@ -1,3 +1,4 @@
+from django.db import models as db_models
 import logging
 from django.db.models import Count, Q
 from django.utils import timezone
@@ -11,9 +12,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
 from accounts.permissions import HasModulePermission
-from .models import CompteEmail, Email, PieceJointeEmail, ActionEmail, EtiquetteEmail, LienEmail, RegleClassification
+from .models import CompteEmail, SignatureEmail, TemplateReponse, Email, PieceJointeEmail, ActionEmail, EtiquetteEmail, LienEmail, RegleClassification
 from .serializers import (
-    CompteEmailSerializer, EmailListSerializer, EmailDetailSerializer,
+    CompteEmailSerializer, SignatureEmailSerializer, TemplateReponseSerializer,
+    EmailListSerializer, EmailDetailSerializer,
     EmailCreateSerializer, PieceJointeSerializer, ActionEmailSerializer, EtiquetteSerializer,
     LienEmailSerializer, RegleClassificationSerializer,
 )
@@ -364,3 +366,46 @@ def dashboard_courrier_intelligent(request):
             qs.filter(projet__isnull=False).values('projet__titre').annotate(nb=Count('id'))[:10]
         ),
     })
+
+
+class SignatureEmailViewSet(viewsets.ModelViewSet):
+    serializer_class = SignatureEmailSerializer
+    permission_classes = [CanReadCI]
+
+    def get_queryset(self):
+        return SignatureEmail.objects.filter(utilisateur=self.request.user).order_by('-est_principale', 'nom')
+
+    def perform_create(self, s):
+        s.save(utilisateur=self.request.user)
+
+    @action(detail=True, methods=['post'])
+    def definir_principale(self, request, pk=None):
+        sig = self.get_object()
+        sig.est_principale = True
+        sig.save()
+        return Response(SignatureEmailSerializer(sig).data)
+
+
+class TemplateReponseViewSet(viewsets.ModelViewSet):
+    serializer_class = TemplateReponseSerializer
+
+    def get_permissions(self):
+        return [CanReadCI()] if self.action in ['list', 'retrieve'] else [CanEditCI()]
+
+    def get_queryset(self):
+        user = self.request.user
+        return TemplateReponse.objects.filter(
+            actif=True
+        ).filter(
+            models.Q(est_global=True) | models.Q(cree_par=user)
+        ).order_by('type_template', 'titre')
+
+    def perform_create(self, s):
+        s.save(cree_par=self.request.user)
+
+    @action(detail=True, methods=['post'])
+    def utiliser(self, request, pk=None):
+        tpl = self.get_object()
+        tpl.nb_utilisations += 1
+        tpl.save(update_fields=['nb_utilisations'])
+        return Response(TemplateReponseSerializer(tpl).data)

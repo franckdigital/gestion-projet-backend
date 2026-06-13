@@ -4,8 +4,9 @@ from .views import (
     IndicateurViewSet, ValeurCiblePeriodeViewSet, CollecteIndicateurViewSet,
     AlerteIndicateurViewSet,
     FormulaireDynamiqueViewSet, ChampFormulaireViewSet,
-    SoumissionFormulaireViewSet,
-    EnqueteViewSet, SectionEnqueteViewSet, QuestionEnqueteViewSet, ReponseEnqueteViewSet,
+    SoumissionFormulaireViewSet, ReponseChampViewSet,
+    EnqueteViewSet, SectionEnqueteViewSet, QuestionEnqueteViewSet,
+    ReponseEnqueteViewSet, ReponseQuestionViewSet,
     CadreResultatsViewSet, NiveauResultatViewSet, TheorieChangementViewSet,
     EvaluationViewSet, CritereEvaluationViewSet, LeconApprisViewSet,
     RapportSEViewSet, AnalysePredictiveViewSet, PointSIGViewSet,
@@ -25,12 +26,14 @@ router.register(r'alertes', AlerteIndicateurViewSet, basename='alerte-indicateur
 router.register(r'formulaires', FormulaireDynamiqueViewSet, basename='formulaire')
 router.register(r'champs-formulaire', ChampFormulaireViewSet, basename='champ-formulaire')
 router.register(r'soumissions', SoumissionFormulaireViewSet, basename='soumission')
+router.register(r'reponses-champ', ReponseChampViewSet, basename='reponse-champ')
 
 # M19 — Enquêtes
 router.register(r'enquetes', EnqueteViewSet, basename='enquete')
 router.register(r'sections-enquete', SectionEnqueteViewSet, basename='section-enquete')
 router.register(r'questions-enquete', QuestionEnqueteViewSet, basename='question-enquete')
 router.register(r'reponses-enquete', ReponseEnqueteViewSet, basename='reponse-enquete')
+router.register(r'reponses-question', ReponseQuestionViewSet, basename='reponse-question')
 
 # M20 — Cadre de résultats et évaluations
 router.register(r'cadres-resultats', CadreResultatsViewSet, basename='cadre-resultats')

@@ -1248,3 +1248,35 @@ def dashboard_direction(request):
             statut='publie', type_lecon='bonne_pratique'
         ).count(),
     })
+
+
+class ReponseChampViewSet(viewsets.ModelViewSet):
+    serializer_class = ReponseChampSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    ordering_fields = ['created_at']
+
+    def get_permissions(self):
+        return [HasModulePermission.for_module('suivi_evaluation', 'peut_lire')()]             if self.action in ['list', 'retrieve']             else [HasModulePermission.for_module('suivi_evaluation', 'peut_modifier')()]
+
+    def get_queryset(self):
+        qs = ReponseChamp.objects.select_related('soumission', 'champ').order_by('id')
+        soumission_id = self.request.query_params.get('soumission')
+        if soumission_id:
+            qs = qs.filter(soumission_id=soumission_id)
+        return qs
+
+
+class ReponseQuestionViewSet(viewsets.ModelViewSet):
+    serializer_class = ReponseQuestionSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    ordering_fields = ['created_at']
+
+    def get_permissions(self):
+        return [HasModulePermission.for_module('suivi_evaluation', 'peut_lire')()]             if self.action in ['list', 'retrieve']             else [HasModulePermission.for_module('suivi_evaluation', 'peut_modifier')()]
+
+    def get_queryset(self):
+        qs = ReponseQuestion.objects.select_related('reponse_enquete', 'question').order_by('id')
+        reponse_id = self.request.query_params.get('reponse_enquete')
+        if reponse_id:
+            qs = qs.filter(reponse_enquete_id=reponse_id)
+        return qs

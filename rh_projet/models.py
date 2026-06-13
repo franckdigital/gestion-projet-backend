@@ -225,3 +225,193 @@ class BesoinFormation(models.Model):
 
     def __str__(self):
         return f"{self.employe.nom_complet} — {self.intitule}"
+
+
+class DemandeConge(models.Model):
+    TYPE_CHOICES = [
+        ('annuel', 'Congé annuel'),
+        ('maladie', 'Congé maladie'),
+        ('maternite', 'Congé maternité'),
+        ('paternite', 'Congé paternité'),
+        ('exceptionnel', 'Congé exceptionnel'),
+        ('sans_solde', 'Congé sans solde'),
+        ('recuperation', 'Récupération'),
+        ('autre', 'Autre'),
+    ]
+    STATUT_CHOICES = [
+        ('brouillon', 'Brouillon'),
+        ('soumise', 'Soumise'),
+        ('approuvee', 'Approuvée'),
+        ('rejetee', 'Rejetée'),
+        ('annulee', 'Annulée'),
+    ]
+
+    employe = models.ForeignKey(
+        EmployeProjet, on_delete=models.CASCADE, related_name='demandes_conge'
+    )
+    type_conge = models.CharField(max_length=20, choices=TYPE_CHOICES, default='annuel')
+    date_debut = models.DateField()
+    date_fin = models.DateField()
+    nombre_jours = models.DecimalField(max_digits=5, decimal_places=1, default=0)
+    motif = models.TextField(blank=True)
+    piece_justificative = models.FileField(
+        upload_to='rh/conges/%Y/', null=True, blank=True
+    )
+    statut = models.CharField(max_length=15, choices=STATUT_CHOICES, default='brouillon')
+    approuve_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='conges_approuves'
+    )
+    date_approbation = models.DateTimeField(null=True, blank=True)
+    motif_rejet = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Demande de congé'
+        verbose_name_plural = 'Demandes de congé'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Congé {self.employe.nom_complet} — {self.date_debut} → {self.date_fin}"
+
+    def save(self, *args, **kwargs):
+        if self.date_debut and self.date_fin:
+            delta = (self.date_fin - self.date_debut).days + 1
+            self.nombre_jours = max(delta, 0)
+        super().save(*args, **kwargs)
+
+    def soumettre(self):
+        self.statut = 'soumise'
+        self.save(update_fields=['statut'])
+
+    def approuver(self, user):
+        self.statut = 'approuvee'
+        self.approuve_par = user
+        self.date_approbation = timezone.now()
+        self.save(update_fields=['statut', 'approuve_par', 'date_approbation'])
+        self.employe.statut = 'conge'
+        self.employe.save(update_fields=['statut'])
+
+    def rejeter(self, user, motif=''):
+        self.statut = 'rejetee'
+        self.approuve_par = user
+        self.date_approbation = timezone.now()
+        self.motif_rejet = motif
+        self.save(update_fields=['statut', 'approuve_par', 'date_approbation', 'motif_rejet'])
+
+
+class DemandeAbsence(models.Model):
+    TYPE_CHOICES = [
+        ('autorisation', 'Autorisation d\'absence'),
+        ('absence_injustifiee', 'Absence injustifiée'),
+        ('absence_justifiee', 'Absence justifiée'),
+        ('retard', 'Retard'),
+        ('mission', 'Absence pour mission'),
+        ('formation', 'Absence pour formation'),
+        ('autre', 'Autre'),
+    ]
+    STATUT_CHOICES = [
+        ('soumise', 'Soumise'),
+        ('approuvee', 'Approuvée'),
+        ('rejetee', 'Rejetée'),
+        ('annulee', 'Annulée'),
+    ]
+
+    employe = models.ForeignKey(
+        EmployeProjet, on_delete=models.CASCADE, related_name='demandes_absence'
+    )
+    type_absence = models.CharField(max_length=25, choices=TYPE_CHOICES, default='autorisation')
+    date_absence = models.DateField()
+    heure_debut = models.TimeField(null=True, blank=True)
+    heure_fin = models.TimeField(null=True, blank=True)
+    duree_heures = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    motif = models.TextField()
+    piece_justificative = models.FileField(
+        upload_to='rh/absences/%Y/', null=True, blank=True
+    )
+    statut = models.CharField(max_length=15, choices=STATUT_CHOICES, default='soumise')
+    approuve_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='absences_approuvees'
+    )
+    date_approbation = models.DateTimeField(null=True, blank=True)
+    motif_rejet = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Demande d\'absence'
+        verbose_name_plural = 'Demandes d\'absence'
+        ordering = ['-date_absence']
+
+    def __str__(self):
+        return f"Absence {self.employe.nom_complet} — {self.date_absence} ({self.type_absence})"
+
+    def approuver(self, user):
+        self.statut = 'approuvee'
+        self.approuve_par = user
+        self.date_approbation = timezone.now()
+        self.save(update_fields=['statut', 'approuve_par', 'date_approbation'])
+
+    def rejeter(self, user, motif=''):
+        self.statut = 'rejetee'
+        self.approuve_par = user
+        self.date_approbation = timezone.now()
+        self.motif_rejet = motif
+        self.save(update_fields=['statut', 'approuve_par', 'date_approbation', 'motif_rejet'])
+
+
+class OccurrenceSpeciale(models.Model):
+    TYPE_CHOICES = [
+        ('naissance', 'Naissance'),
+        ('deces_conjoint', 'Décès conjoint'),
+        ('deces_enfant', 'Décès enfant'),
+        ('deces_parent', 'Décès parent'),
+        ('mariage', 'Mariage'),
+        ('maladie_grave', 'Maladie grave'),
+        ('accident', 'Accident de travail'),
+        ('autre', 'Autre'),
+    ]
+    STATUT_CHOICES = [
+        ('soumise', 'Soumise'),
+        ('validee', 'Validée'),
+        ('rejetee', 'Rejetée'),
+    ]
+
+    employe = models.ForeignKey(
+        EmployeProjet, on_delete=models.CASCADE, related_name='occurrences_speciales'
+    )
+    type_occurrence = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    date_evenement = models.DateField()
+    description = models.TextField(blank=True)
+    jours_accordes = models.IntegerField(default=0)
+    date_debut_conge = models.DateField(null=True, blank=True)
+    date_fin_conge = models.DateField(null=True, blank=True)
+    piece_justificative = models.FileField(
+        upload_to='rh/occurrences/%Y/', null=True, blank=True
+    )
+    statut = models.CharField(max_length=15, choices=STATUT_CHOICES, default='soumise')
+    valide_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='occurrences_validees'
+    )
+    date_validation = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Occurrence spéciale'
+        verbose_name_plural = 'Occurrences spéciales'
+        ordering = ['-date_evenement']
+
+    def __str__(self):
+        return f"{self.employe.nom_complet} — {self.get_type_occurrence_display()} ({self.date_evenement})"
+
+    def valider(self, user):
+        self.statut = 'validee'
+        self.valide_par = user
+        self.date_validation = timezone.now()
+        self.save(update_fields=['statut', 'valide_par', 'date_validation'])

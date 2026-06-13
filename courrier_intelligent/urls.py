@@ -1,13 +1,16 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    CompteEmailViewSet, EmailViewSet, PieceJointeViewSet,
+    CompteEmailViewSet, SignatureEmailViewSet, TemplateReponseViewSet,
+    EmailViewSet, PieceJointeViewSet,
     ActionEmailViewSet, EtiquetteViewSet, LienEmailViewSet,
     RegleClassificationViewSet, dashboard_courrier_intelligent,
 )
 
 router = DefaultRouter()
 router.register(r'comptes', CompteEmailViewSet, basename='compte-email')
+router.register(r'signatures', SignatureEmailViewSet, basename='signature-email')
+router.register(r'templates', TemplateReponseViewSet, basename='template-reponse')
 router.register(r'emails', EmailViewSet, basename='email')
 router.register(r'pieces-jointes', PieceJointeViewSet, basename='pj-email')
 router.register(r'actions', ActionEmailViewSet, basename='action-email')

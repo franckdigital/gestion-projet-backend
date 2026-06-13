@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from accounts.serializers import UserMinimalSerializer
-from .models import CompteEmail, Email, PieceJointeEmail, ActionEmail, EtiquetteEmail, LienEmail, RegleClassification
+from .models import CompteEmail, SignatureEmail, TemplateReponse, Email, PieceJointeEmail, ActionEmail, EtiquetteEmail, LienEmail, RegleClassification
 
 
 class CompteEmailSerializer(serializers.ModelSerializer):
@@ -121,3 +121,26 @@ class RegleClassificationSerializer(serializers.ModelSerializer):
                   'conditions', 'action', 'parametres_action', 'nb_applications',
                   'cree_par', 'created_at', 'updated_at']
         read_only_fields = ['id', 'cree_par', 'nb_applications', 'created_at', 'updated_at']
+
+
+class SignatureEmailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SignatureEmail
+        fields = [
+            'id', 'utilisateur', 'compte', 'nom',
+            'contenu_html', 'contenu_texte', 'est_principale',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'utilisateur', 'created_at', 'updated_at']
+
+
+class TemplateReponseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TemplateReponse
+        fields = [
+            'id', 'titre', 'type_template', 'sujet_template',
+            'corps_html', 'corps_texte', 'langue', 'variables',
+            'est_global', 'cree_par', 'nb_utilisations', 'actif',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'cree_par', 'nb_utilisations', 'created_at', 'updated_at']

@@ -4,6 +4,7 @@ from .views import (
     EmployeProjetViewSet, AffectationRHViewSet,
     FeuilleTempsViewSet, LigneFeuilleTempsViewSet,
     EvaluationPerformanceViewSet, BesoinFormationViewSet,
+    DemandeCongeViewSet, DemandeAbsenceViewSet, OccurrenceSpecialeViewSet,
     dashboard_rh,
 )
 
@@ -24,6 +25,11 @@ router.register(r'evaluations', EvaluationPerformanceViewSet, basename='evaluati
 
 # Besoins de formation
 router.register(r'besoins-formation', BesoinFormationViewSet, basename='besoin-formation')
+
+# Congés et absences
+router.register(r'conges', DemandeCongeViewSet, basename='demande-conge')
+router.register(r'absences', DemandeAbsenceViewSet, basename='demande-absence')
+router.register(r'occurrences-speciales', OccurrenceSpecialeViewSet, basename='occurrence-speciale')
 
 urlpatterns = [
     path('', include(router.urls)),

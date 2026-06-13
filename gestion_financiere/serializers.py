@@ -386,3 +386,62 @@ class RapprochementBancaireSerializer(serializers.ModelSerializer):
             'nb_mouvements_rapproches', 'nb_mouvements_non_rapproches',
             'created_at',
         ]
+
+
+class LigneBudgetaireLegacySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LigneBudgetaireLegacy
+        fields = [
+            'id', 'budget', 'code', 'libelle', 'categorie',
+            'montant_prevu', 'montant_engage', 'montant_depense', 'created_at',
+        ]
+        read_only_fields = ['id', 'created_at']
+
+
+class BudgetProjetListSerializer(serializers.ModelSerializer):
+    projet_titre = serializers.CharField(source='projet.titre', read_only=True)
+    nb_lignes = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BudgetProjet
+        fields = [
+            'id', 'projet', 'projet_titre', 'exercice',
+            'montant_initial', 'montant_revise', 'statut',
+            'date_approbation', 'nb_lignes', 'created_at',
+        ]
+
+    def get_nb_lignes(self, obj):
+        return obj.lignes.count()
+
+
+class BudgetProjetDetailSerializer(serializers.ModelSerializer):
+    projet_titre = serializers.CharField(source='projet.titre', read_only=True)
+    lignes = LigneBudgetaireLegacySerializer(many=True, read_only=True)
+    approuve_par_detail = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BudgetProjet
+        fields = [
+            'id', 'projet', 'projet_titre', 'exercice',
+            'montant_initial', 'montant_revise', 'statut',
+            'date_approbation', 'approuve_par', 'approuve_par_detail',
+            'notes', 'lignes', 'created_at',
+        ]
+        read_only_fields = ['id', 'created_at']
+
+    def get_approuve_par_detail(self, obj):
+        if not obj.approuve_par:
+            return None
+        return {'id': obj.approuve_par.id, 'email': obj.approuve_par.email}
+
+
+class DepenseLegacySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DepenseLegacy
+        fields = [
+            'id', 'ligne', 'reference', 'libelle', 'montant',
+            'date_depense', 'fournisseur', 'numero_facture', 'statut',
+            'justificatif', 'saisi_par', 'approuve_par', 'date_approbation',
+            'notes', 'created_at',
+        ]
+        read_only_fields = ['id', 'reference', 'saisi_par', 'date_approbation', 'created_at']

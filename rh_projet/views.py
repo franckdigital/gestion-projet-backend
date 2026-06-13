@@ -12,6 +12,7 @@ from accounts.permissions import HasModulePermission
 from .models import (
     EmployeProjet, AffectationRH, FeuilleTemps,
     LigneFeuilleTemps, EvaluationPerformance, BesoinFormation,
+    DemandeConge, DemandeAbsence, OccurrenceSpeciale,
 )
 from .serializers import (
     EmployeProjetListSerializer, EmployeProjetDetailSerializer, EmployeProjetMinimalSerializer,
@@ -20,6 +21,9 @@ from .serializers import (
     LigneFeuilleTempsSerializer,
     EvaluationPerformanceListSerializer, EvaluationPerformanceDetailSerializer,
     BesoinFormationListSerializer, BesoinFormationDetailSerializer,
+    DemandeCongeListSerializer, DemandeCongeDetailSerializer,
+    DemandeAbsenceListSerializer, DemandeAbsenceDetailSerializer,
+    OccurrenceSpecialeSerializer,
 )
 from .filters import (
     EmployeProjetFilter, AffectationRHFilter, FeuilleTempsFilter,
@@ -483,3 +487,198 @@ def dashboard_rh(request):
             'contrats_a_expirer_30j': contrats_a_expirer,
         },
     })
+
+
+# ─── DemandeConge ─────────────────────────────────────────────────────────────
+
+class DemandeCongeViewSet(viewsets.ModelViewSet):
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['motif', 'employe__nom', 'employe__prenom']
+    ordering_fields = ['date_debut', 'date_fin', 'created_at']
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'mes_conges', 'calendrier', 'stats']:
+            return [HasModulePermission.for_module('rh_projet', 'peut_lire')()]
+        if self.action in ['approuver', 'rejeter']:
+            return [HasModulePermission.for_module('rh_projet', 'peut_valider')()]
+        return [HasModulePermission.for_module('rh_projet', 'peut_modifier')()]
+
+    def get_queryset(self):
+        return DemandeConge.objects.select_related('employe', 'approuve_par').order_by('-created_at')
+
+    def get_serializer_class(self):
+        return DemandeCongeListSerializer if self.action == 'list' else DemandeCongeDetailSerializer
+
+    @action(detail=False, methods=['get'])
+    def mes_conges(self, request):
+        employe = EmployeProjet.objects.filter(utilisateur=request.user).first()
+        if not employe:
+            return Response({'detail': 'Profil employe introuvable.'}, status=404)
+        qs = DemandeConge.objects.filter(employe=employe).order_by('-created_at')
+        return Response(DemandeCongeListSerializer(qs, many=True).data)
+
+    @action(detail=False, methods=['get'])
+    def en_attente(self, request):
+        qs = DemandeConge.objects.filter(statut='soumise').order_by('date_debut')
+        return Response(DemandeCongeListSerializer(qs, many=True).data)
+
+    @action(detail=True, methods=['post'])
+    def soumettre(self, request, pk=None):
+        demande = self.get_object()
+        if demande.statut != 'brouillon':
+            return Response({'detail': 'Seul un brouillon peut etre soumis.'}, status=400)
+        demande.soumettre()
+        return Response(DemandeCongeDetailSerializer(demande).data)
+
+    @action(detail=True, methods=['post'])
+    def approuver(self, request, pk=None):
+        demande = self.get_object()
+        if demande.statut != 'soumise':
+            return Response({'detail': 'Seule une demande soumise peut etre approuvee.'}, status=400)
+        demande.approuver(request.user)
+        AuditLog.log(request.user, 'approve', module='rh_projet',
+                     objet_type='DemandeConge', objet_id=demande.id, request=request)
+        return Response(DemandeCongeDetailSerializer(demande).data)
+
+    @action(detail=True, methods=['post'])
+    def rejeter(self, request, pk=None):
+        demande = self.get_object()
+        motif = request.data.get('motif', '')
+        demande.rejeter(request.user, motif)
+        return Response(DemandeCongeDetailSerializer(demande).data)
+
+    @action(detail=True, methods=['post'])
+    def annuler(self, request, pk=None):
+        demande = self.get_object()
+        if demande.statut in ('approuvee', 'rejetee'):
+            return Response({'detail': 'Impossible d annuler une demande deja traitee.'}, status=400)
+        demande.statut = 'annulee'
+        demande.save(update_fields=['statut'])
+        return Response(DemandeCongeDetailSerializer(demande).data)
+
+    @action(detail=False, methods=['get'])
+    def calendrier(self, request):
+        qs = DemandeConge.objects.filter(statut='approuvee').select_related('employe')
+        data = [
+            {
+                'id': d.id,
+                'titre': f"Conge {d.employe.nom_complet}",
+                'type': d.type_conge,
+                'debut': d.date_debut,
+                'fin': d.date_fin,
+                'jours': float(d.nombre_jours),
+            }
+            for d in qs
+        ]
+        return Response(data)
+
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        qs = DemandeConge.objects.all()
+        return Response({
+            'total': qs.count(),
+            'en_attente': qs.filter(statut='soumise').count(),
+            'approuvees': qs.filter(statut='approuvee').count(),
+            'rejetees': qs.filter(statut='rejetee').count(),
+            'par_type': list(qs.values('type_conge').annotate(nb=Count('id'))),
+        })
+
+
+# ─── DemandeAbsence ───────────────────────────────────────────────────────────
+
+class DemandeAbsenceViewSet(viewsets.ModelViewSet):
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['motif', 'employe__nom', 'employe__prenom']
+    ordering_fields = ['date_absence', 'created_at']
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'mes_absences', 'stats']:
+            return [HasModulePermission.for_module('rh_projet', 'peut_lire')()]
+        if self.action in ['approuver', 'rejeter']:
+            return [HasModulePermission.for_module('rh_projet', 'peut_valider')()]
+        return [HasModulePermission.for_module('rh_projet', 'peut_modifier')()]
+
+    def get_queryset(self):
+        return DemandeAbsence.objects.select_related('employe', 'approuve_par').order_by('-date_absence')
+
+    def get_serializer_class(self):
+        return DemandeAbsenceListSerializer if self.action == 'list' else DemandeAbsenceDetailSerializer
+
+    @action(detail=False, methods=['get'])
+    def mes_absences(self, request):
+        employe = EmployeProjet.objects.filter(utilisateur=request.user).first()
+        if not employe:
+            return Response({'detail': 'Profil employe introuvable.'}, status=404)
+        qs = DemandeAbsence.objects.filter(employe=employe).order_by('-date_absence')
+        return Response(DemandeAbsenceListSerializer(qs, many=True).data)
+
+    @action(detail=False, methods=['get'])
+    def en_attente(self, request):
+        qs = DemandeAbsence.objects.filter(statut='soumise').order_by('date_absence')
+        return Response(DemandeAbsenceListSerializer(qs, many=True).data)
+
+    @action(detail=True, methods=['post'])
+    def approuver(self, request, pk=None):
+        demande = self.get_object()
+        if demande.statut != 'soumise':
+            return Response({'detail': 'Seule une demande soumise peut etre approuvee.'}, status=400)
+        demande.approuver(request.user)
+        return Response(DemandeAbsenceDetailSerializer(demande).data)
+
+    @action(detail=True, methods=['post'])
+    def rejeter(self, request, pk=None):
+        demande = self.get_object()
+        motif = request.data.get('motif', '')
+        demande.rejeter(request.user, motif)
+        return Response(DemandeAbsenceDetailSerializer(demande).data)
+
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        qs = DemandeAbsence.objects.all()
+        return Response({
+            'total': qs.count(),
+            'en_attente': qs.filter(statut='soumise').count(),
+            'approuvees': qs.filter(statut='approuvee').count(),
+            'par_type': list(qs.values('type_absence').annotate(nb=Count('id'))),
+        })
+
+
+# ─── OccurrenceSpeciale ───────────────────────────────────────────────────────
+
+class OccurrenceSpecialeViewSet(viewsets.ModelViewSet):
+    serializer_class = OccurrenceSpecialeSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['description', 'employe__nom', 'employe__prenom']
+    ordering_fields = ['date_evenement', 'created_at']
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [HasModulePermission.for_module('rh_projet', 'peut_lire')()]
+        if self.action == 'valider':
+            return [HasModulePermission.for_module('rh_projet', 'peut_valider')()]
+        return [HasModulePermission.for_module('rh_projet', 'peut_modifier')()]
+
+    def get_queryset(self):
+        return OccurrenceSpeciale.objects.select_related('employe', 'valide_par').order_by('-date_evenement')
+
+    @action(detail=True, methods=['post'])
+    def valider(self, request, pk=None):
+        occ = self.get_object()
+        if occ.statut != 'soumise':
+            return Response({'detail': 'Seule une occurrence soumise peut etre validee.'}, status=400)
+        occ.valider(request.user)
+        AuditLog.log(request.user, 'validate', module='rh_projet',
+                     objet_type='OccurrenceSpeciale', objet_id=occ.id, request=request)
+        return Response(OccurrenceSpecialeSerializer(occ).data)
+
+    @action(detail=True, methods=['post'])
+    def rejeter(self, request, pk=None):
+        occ = self.get_object()
+        occ.statut = 'rejetee'
+        occ.valide_par = request.user
+        occ.date_validation = timezone.now()
+        occ.save(update_fields=['statut', 'valide_par', 'date_validation'])
+        return Response(OccurrenceSpecialeSerializer(occ).data)

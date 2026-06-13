@@ -3,6 +3,7 @@ from accounts.serializers import UserMinimalSerializer
 from .models import (
     EmployeProjet, AffectationRH, FeuilleTemps,
     LigneFeuilleTemps, EvaluationPerformance, BesoinFormation,
+    DemandeConge, DemandeAbsence, OccurrenceSpeciale,
 )
 
 
@@ -203,3 +204,87 @@ class BesoinFormationDetailSerializer(serializers.ModelSerializer):
             'identifie_par', 'identifie_par_detail', 'created_at',
         ]
         read_only_fields = ['id', 'created_at']
+
+
+# ─── DemandeConge ─────────────────────────────────────────────────────────────
+
+class DemandeCongeListSerializer(serializers.ModelSerializer):
+    employe_detail = EmployeProjetMinimalSerializer(source='employe', read_only=True)
+    approuve_par_detail = UserMinimalSerializer(source='approuve_par', read_only=True)
+
+    class Meta:
+        model = DemandeConge
+        fields = [
+            'id', 'employe', 'employe_detail', 'type_conge',
+            'date_debut', 'date_fin', 'nombre_jours',
+            'statut', 'approuve_par', 'approuve_par_detail',
+            'date_approbation', 'created_at',
+        ]
+
+
+class DemandeCongeDetailSerializer(serializers.ModelSerializer):
+    employe_detail = EmployeProjetMinimalSerializer(source='employe', read_only=True)
+    approuve_par_detail = UserMinimalSerializer(source='approuve_par', read_only=True)
+
+    class Meta:
+        model = DemandeConge
+        fields = [
+            'id', 'employe', 'employe_detail', 'type_conge',
+            'date_debut', 'date_fin', 'nombre_jours',
+            'motif', 'piece_justificative', 'statut',
+            'approuve_par', 'approuve_par_detail',
+            'date_approbation', 'motif_rejet', 'notes',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'nombre_jours', 'approuve_par', 'date_approbation', 'created_at', 'updated_at']
+
+
+# ─── DemandeAbsence ───────────────────────────────────────────────────────────
+
+class DemandeAbsenceListSerializer(serializers.ModelSerializer):
+    employe_detail = EmployeProjetMinimalSerializer(source='employe', read_only=True)
+    approuve_par_detail = UserMinimalSerializer(source='approuve_par', read_only=True)
+
+    class Meta:
+        model = DemandeAbsence
+        fields = [
+            'id', 'employe', 'employe_detail', 'type_absence',
+            'date_absence', 'heure_debut', 'heure_fin', 'duree_heures',
+            'statut', 'approuve_par', 'approuve_par_detail', 'created_at',
+        ]
+
+
+class DemandeAbsenceDetailSerializer(serializers.ModelSerializer):
+    employe_detail = EmployeProjetMinimalSerializer(source='employe', read_only=True)
+    approuve_par_detail = UserMinimalSerializer(source='approuve_par', read_only=True)
+
+    class Meta:
+        model = DemandeAbsence
+        fields = [
+            'id', 'employe', 'employe_detail', 'type_absence',
+            'date_absence', 'heure_debut', 'heure_fin', 'duree_heures',
+            'motif', 'piece_justificative', 'statut',
+            'approuve_par', 'approuve_par_detail',
+            'date_approbation', 'motif_rejet', 'notes',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'approuve_par', 'date_approbation', 'created_at', 'updated_at']
+
+
+# ─── OccurrenceSpeciale ───────────────────────────────────────────────────────
+
+class OccurrenceSpecialeSerializer(serializers.ModelSerializer):
+    employe_detail = EmployeProjetMinimalSerializer(source='employe', read_only=True)
+    valide_par_detail = UserMinimalSerializer(source='valide_par', read_only=True)
+
+    class Meta:
+        model = OccurrenceSpeciale
+        fields = [
+            'id', 'employe', 'employe_detail', 'type_occurrence',
+            'date_evenement', 'description', 'jours_accordes',
+            'date_debut_conge', 'date_fin_conge',
+            'piece_justificative', 'statut',
+            'valide_par', 'valide_par_detail', 'date_validation',
+            'notes', 'created_at',
+        ]
+        read_only_fields = ['id', 'valide_par', 'date_validation', 'created_at']

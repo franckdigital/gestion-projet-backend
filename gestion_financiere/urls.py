@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     BudgetViewSet, LigneBudgetaireViewSet, RevisionBudgetaireViewSet,
+    BudgetProjetViewSet, LigneBudgetaireLegacyViewSet, DepenseLegacyViewSet,
     FournisseurViewSet, DepenseViewSet, AvanceViewSet, EngagementViewSet,
     ConventionViewSet, TrancheFinancementViewSet, CofinancementViewSet,
     RapportBailleurViewSet, PlanTresorerieViewSet, LigneTresorerieViewSet,
@@ -17,6 +18,11 @@ router = DefaultRouter()
 router.register(r'budgets', BudgetViewSet, basename='budget')
 router.register(r'lignes-budgetaires', LigneBudgetaireViewSet, basename='ligne-budgetaire')
 router.register(r'revisions-budget', RevisionBudgetaireViewSet, basename='revision-budget')
+
+# Budget legacy (par projet)
+router.register(r'budgets-projet', BudgetProjetViewSet, basename='budget-projet')
+router.register(r'lignes-budget-legacy', LigneBudgetaireLegacyViewSet, basename='ligne-budget-legacy')
+router.register(r'depenses-legacy', DepenseLegacyViewSet, basename='depense-legacy')
 
 # M22 — Dépenses
 router.register(r'fournisseurs', FournisseurViewSet, basename='fournisseur')
