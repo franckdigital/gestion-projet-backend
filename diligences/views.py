@@ -6,10 +6,12 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
 from accounts.permissions import HasModulePermission
-from .models import Diligence, SuiviDiligence, RelanceDiligence
+from rest_framework.parsers import MultiPartParser, FormParser
+from .models import Diligence, SuiviDiligence, RelanceDiligence, CommentaireDiligence
 from .serializers import (
     DiligenceListSerializer, DiligenceDetailSerializer,
     SuiviDiligenceSerializer, RelanceDiligenceSerializer,
+    CommentaireDiligenceSerializer,
 )
 
 CanRead = HasModulePermission.for_module('diligences', 'peut_lire')
@@ -112,3 +114,19 @@ class RelanceDiligenceViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['diligence']
     permission_classes = [CanRead]
+
+
+class CommentaireDiligenceViewSet(viewsets.ModelViewSet):
+    queryset = CommentaireDiligence.objects.select_related('auteur', 'diligence').order_by('created_at')
+    serializer_class = CommentaireDiligenceSerializer
+    parser_classes = [MultiPartParser, FormParser]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['diligence']
+
+    def get_permissions(self):
+        return [CanRead()] if self.action in ['list', 'retrieve'] else [CanEdit()]
+
+    def perform_create(self, s):
+        fichier = self.request.FILES.get('fichier')
+        nom = fichier.name if fichier else ''
+        s.save(auteur=self.request.user, nom_fichier=nom)

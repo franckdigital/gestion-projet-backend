@@ -114,3 +114,22 @@ class RelanceDiligence(models.Model):
     class Meta:
         verbose_name = 'Relance diligence'
         ordering = ['-date_relance']
+
+
+class CommentaireDiligence(models.Model):
+    diligence = models.ForeignKey(Diligence, on_delete=models.CASCADE, related_name='commentaires')
+    auteur = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+        related_name='commentaires_diligences'
+    )
+    texte = models.TextField()
+    fichier = models.FileField(upload_to='diligences/commentaires/', null=True, blank=True)
+    nom_fichier = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Commentaire diligence'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Commentaire {self.diligence.reference} — {self.created_at:%d/%m/%Y}"

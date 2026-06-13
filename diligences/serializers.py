@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from accounts.serializers import UserMinimalSerializer
-from .models import Diligence, SuiviDiligence, RelanceDiligence
+from .models import Diligence, SuiviDiligence, RelanceDiligence, CommentaireDiligence
 
 
 class SuiviDiligenceSerializer(serializers.ModelSerializer):
@@ -20,6 +20,15 @@ class RelanceDiligenceSerializer(serializers.ModelSerializer):
         model = RelanceDiligence
         fields = ['id', 'diligence', 'emetteur', 'emetteur_detail', 'message', 'date_relance']
         read_only_fields = ['id', 'date_relance']
+
+
+class CommentaireDiligenceSerializer(serializers.ModelSerializer):
+    auteur_detail = UserMinimalSerializer(source='auteur', read_only=True)
+
+    class Meta:
+        model = CommentaireDiligence
+        fields = ['id', 'diligence', 'auteur', 'auteur_detail', 'texte', 'fichier', 'nom_fichier', 'created_at']
+        read_only_fields = ['id', 'created_at']
 
 
 class DiligenceListSerializer(serializers.ModelSerializer):
@@ -53,6 +62,7 @@ class DiligenceDetailSerializer(serializers.ModelSerializer):
     created_by_detail = UserMinimalSerializer(source='created_by', read_only=True)
     suivis = SuiviDiligenceSerializer(many=True, read_only=True)
     relances = RelanceDiligenceSerializer(many=True, read_only=True)
+    commentaires = CommentaireDiligenceSerializer(many=True, read_only=True)
 
     class Meta:
         model = Diligence
