@@ -185,6 +185,33 @@ class Command(BaseCommand):
             make(M('gestion_financiere.RapprochementBancaire'), {'compte': c, 'periode_debut': self.today.replace(day=1) - timedelta(days=30)},
                  periode_fin=self.today.replace(day=1) - timedelta(days=1), solde_releve=solde)
             n += 1
+        # Budgets par projet (écran « Budgets projet ») + lignes + dépenses simplifiées
+        Budget, Ligne, Dep = (M('gestion_financiere.BudgetProjet'), M('gestion_financiere.LigneBudgetaireLegacy'),
+                              M('gestion_financiere.DepenseLegacy'))
+        for pi, projet in enumerate(M('programmes_projets.Projet').objects.all()[:4]):
+            bp = make(Budget, {'projet': projet, 'exercice': self.today.year},
+                      montant_initial=Decimal(120000000 + pi * 15000000), statut='approuve',
+                      date_approbation=self.now - timedelta(days=60), approuve_par=self.admin,
+                      notes='Budget annuel simplifié du projet')
+            n += 1
+            lignes = []
+            for code, lib, cat, prevu in [
+                ('L01', 'Ressources humaines', 'personnel', 45000000),
+                ('L02', 'Équipements et fournitures', 'equipements', 30000000),
+                ('L03', 'Missions et déplacements', 'missions', 15000000),
+                ('L04', 'Formation et sensibilisation', 'formations', 20000000),
+            ]:
+                lignes.append(make(Ligne, {'budget': bp, 'code': code}, libelle=lib, categorie=cat,
+                                   montant_prevu=Decimal(prevu), montant_engage=Decimal(prevu) * Decimal('0.6'),
+                                   montant_depense=Decimal(prevu) * Decimal('0.4')))
+                n += 1
+            for k, l in enumerate(lignes):
+                make(Dep, {'reference': f'DS-{self.today.year}-{pi + 1}{k + 1:02d}'}, ligne=l,
+                     libelle=f'Dépense {l.libelle.lower()}', montant=l.montant_prevu * Decimal('0.1'),
+                     date_depense=self.today - timedelta(days=10 + k * 9), fournisseur='Fournisseur Démo SARL',
+                     numero_facture=f'FAC-{pi + 1}{k + 1:03d}', saisi_par=self.admin,
+                     statut='approuve' if k % 2 == 0 else 'soumis')
+                n += 1
         Convention, Bailleur = M('gestion_financiere.Convention').objects.first(), M('gouvernance.Bailleur').objects.all()[:2]
         if Convention:
             for b in Bailleur:
