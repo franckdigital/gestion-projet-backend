@@ -397,7 +397,7 @@ class TemplateReponseViewSet(viewsets.ModelViewSet):
         return TemplateReponse.objects.filter(
             actif=True
         ).filter(
-            models.Q(est_global=True) | models.Q(cree_par=user)
+            Q(est_global=True) | Q(cree_par=user)
         ).order_by('type_template', 'titre')
 
     def perform_create(self, s):

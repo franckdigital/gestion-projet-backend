@@ -212,6 +212,26 @@ class Command(BaseCommand):
                      numero_facture=f'FAC-{pi + 1}{k + 1:03d}', saisi_par=self.admin,
                      statut='approuve' if k % 2 == 0 else 'soumis')
                 n += 1
+        # Flux de trésorerie du mois courant (alimente « Trésorerie — mois courant »)
+        plan = M('gestion_financiere.PlanTresorerie').objects.filter(exercice=self.today.year).first()
+        if plan:
+            Flux = M('gestion_financiere.LigneTresorerie')
+            for typ, cat, lib, prevu, realise in [
+                ('entrant', 'financement', 'Décaissement tranche bailleur', 60000000, 45000000),
+                ('sortant', 'salaire', 'Salaires et charges du mois', 22000000, 21500000),
+                ('sortant', 'mission', 'Missions de supervision', 6500000, 3000000),
+            ]:
+                make(Flux, {'plan': plan, 'libelle': lib, 'mois': self.today.month, 'annee': self.today.year},
+                     type_flux=typ, categorie=cat, montant_prevu=Decimal(prevu), montant_realise=Decimal(realise))
+                n += 1
+        # Une ligne budgétaire en dépassement (alimente « Dépassements budgétaires »)
+        budget = M('gestion_financiere.Budget').objects.filter(statut='en_execution').first()
+        if budget:
+            make(M('gestion_financiere.LigneBudgetaire'), {'budget': budget, 'code': 'DEP-DEMO'},
+                 libelle='Carburant et entretien véhicules', categorie='vehicules',
+                 montant_prevu=Decimal('5000000'), montant_engage=Decimal('6200000'),
+                 montant_depense=Decimal('4000000'), ordre=99)
+            n += 1
         Convention, Bailleur = M('gestion_financiere.Convention').objects.first(), M('gouvernance.Bailleur').objects.all()[:2]
         if Convention:
             for b in Bailleur:

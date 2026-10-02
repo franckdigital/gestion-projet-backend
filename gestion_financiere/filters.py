@@ -1,4 +1,5 @@
 import django_filters
+from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
 from .models import (
     Budget, LigneBudgetaire, Depense, Avance, Engagement,
@@ -147,3 +148,29 @@ class RapportFinancierFilter(django_filters.FilterSet):
     class Meta:
         model = RapportFinancier
         fields = ['type_rapport', 'statut', 'periode', 'projet', 'programme']
+
+
+class CSVDjangoFilterBackend(DjangoFilterBackend):
+    """DjangoFilterBackend qui accepte aussi ?statut=a,b,c (plusieurs statuts séparés par des virgules)."""
+
+    @staticmethod
+    def _statuts(request, queryset):
+        raw = request.query_params.get('statut', '')
+        has_field = any(f.name == 'statut' for f in queryset.model._meta.get_fields())
+        if ',' in raw and has_field:
+            return [v.strip() for v in raw.split(',') if v.strip()]
+        return None
+
+    def filter_queryset(self, request, queryset, view):
+        statuts = self._statuts(request, queryset)
+        if statuts:
+            queryset = queryset.filter(statut__in=statuts)
+        return super().filter_queryset(request, queryset, view)
+
+    def get_filterset_kwargs(self, request, queryset, view):
+        kwargs = super().get_filterset_kwargs(request, queryset, view)
+        if self._statuts(request, queryset):
+            data = kwargs['data'].copy()
+            data.pop('statut', None)
+            kwargs['data'] = data
+        return kwargs
