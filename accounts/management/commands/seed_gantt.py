@@ -359,10 +359,10 @@ class Command(BaseCommand):
                             tache=tache,
                             libelle=item_txt,
                             defaults={
-                                'coche': est_coche,
+                                'complete': est_coche,
                                 'ordre': k + 1,
-                                'coche_par': admin if est_coche else None,
-                                'date_coche': timezone.now() if est_coche else None,
+                                'complete_par': admin if est_coche else None,
+                                'date_completion': timezone.now() if est_coche else None,
                             }
                         )
 

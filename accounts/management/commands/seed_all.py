@@ -23,24 +23,34 @@ Usage :
   python manage.py seed_all --dry-run      (affiche l'ordre sans exécuter)
 """
 import sys
-from django.core.management import call_command
+from django.core.management import call_command, get_commands, load_command_class
 from django.core.management.base import BaseCommand, CommandError
 
 
 SEED_PIPELINE = [
     # (commande, description, options_extra)
-    ('seed_lot1',           'Lot 1  — Rôles + Super Admin',                    {}),
-    ('seed_users',          'Users  — Utilisateurs de démonstration',           {}),
-    ('seed_lot2',           'Lot 2  — Zones, Organisation, Programme, Projet',  {}),
-    ('seed_lot3',           'Lot 3  — Exécution + Planification',               {}),
-    ('seed_lot4',           'Lot 4  — Suivi-Évaluation',                        {}),
-    ('seed_lot5',           'Lot 5  — Gestion Financière',                      {}),
-    ('seed_lot6',           'Lot 6  — GED & Archivage',                         {}),
-    ('seed_lot7',           'Lot 7  — Collaboration + Courriers',               {}),
-    ('seed_lot8',           'Lot 8  — Risques, Mobile, IA, BI',                 {}),
-    ('seed_lot9',           'Lot 9  — Marchés, RH, Logistique, SIG...',         {}),
-    ('seed_courrier',       'Extra  — Courriers administratifs (entrants/sortants)', {}),
-    ('seed_comptes_email',  'Extra  — Comptes email courrier intelligent',       {}),
+    ('seed_lot1',               'Lot 1  — Rôles + Super Admin',                    {}),
+    ('seed_users',              'Users  — Utilisateurs de démonstration',           {}),
+    ('seed_lot2',               'Lot 2  — Zones, Organisation, Programme, Projet',  {}),
+    ('seed_projets',            'Projets — Programmes, projets, cadres logiques, SWOT', {}),
+    ('seed_lot3',               'Lot 3  — Exécution + Planification',               {}),
+    ('seed_gantt',              'Gantt  — Activités et tâches datées',              {}),
+    ('seed_tdr',                'M10    — Termes de référence',                     {}),
+    ('seed_pa',                 "M12    — Programmes d'activités",                 {}),
+    ('seed_livrables',          'M15    — Livrables, versions, workflow',           {}),
+    ('seed_missions_rapports',  'Missions — Missions et rapports',                  {}),
+    ('seed_lot4',               'Lot 4  — Suivi-Évaluation',                        {}),
+    ('seed_cadre',              'M20    — Cadre de résultats, ToC, leçons',         {}),
+    ('seed_lot5',               'Lot 5  — Gestion Financière',                      {}),
+    ('seed_lot6',               'Lot 6  — GED & Archivage',                         {}),
+    ('seed_lot7',               'Lot 7  — Collaboration + Courriers',               {}),
+    ('seed_lot8',               'Lot 8  — Risques, Mobile, IA, BI',                 {}),
+    ('seed_lot9',               'Lot 9  — Marchés, RH, Logistique, SIG...',         {}),
+    ('seed_lot9_new',           'Lot 9b — Diligences, Événements, Qualité',         {}),
+    ('seed_lot10',             'Lot 10 — Compléments (structure, RH, finance, logistique...)', {}),
+    ('seed_sig_capitalisation', 'Extra  — SIG & Capitalisation enrichis',           {}),
+    ('seed_courrier',           'Extra  — Courriers administratifs (entrants/sortants)', {}),
+    ('seed_comptes_email',      'Extra  — Comptes email courrier intelligent',       {}),
 ]
 
 SEED_KEYS = [cmd for cmd, _, _ in SEED_PIPELINE]
@@ -115,7 +125,7 @@ class Command(BaseCommand):
             self.stdout.write('─' * 60)
 
             call_kwargs = dict(extra_opts)
-            if reset and cmd not in ('seed_lot1',):
+            if reset and cmd not in ('seed_lot1',) and self._supports_reset(cmd):
                 call_kwargs['reset'] = True
 
             try:
@@ -158,6 +168,13 @@ class Command(BaseCommand):
             for email, label in demo_users:
                 self.stdout.write(f'    {email:<30} {label}')
             self.stdout.write(self.style.WARNING('\n  ⚠  Changez les mots de passe en production !'))
+
+    @staticmethod
+    def _supports_reset(cmd):
+        """Vrai si la commande déclare l'option --reset."""
+        command = load_command_class(get_commands()[cmd], cmd)
+        parser = command.create_parser('manage.py', cmd)
+        return any('--reset' in a.option_strings for a in parser._actions)
 
     def _print_header(self, pipeline, dry, reset):
         mode = 'DRY-RUN' if dry else ('RESET + SEED' if reset else 'SEED')
