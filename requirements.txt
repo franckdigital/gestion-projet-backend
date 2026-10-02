@@ -22,3 +22,7 @@ python-docx==1.1.2
 # Coffre-fort numérique — chiffrement AES-256-GCM
 cryptography==44.0.3
 reportlab==4.2.5
+
+# Déploiement
+gunicorn==23.0.0
+mysqlclient==2.2.7
